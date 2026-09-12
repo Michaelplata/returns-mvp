@@ -50,8 +50,8 @@ def apply_hard_rules(new_case: dict) -> dict | None:
         return {
             "decision": "deny",
             "confidence": "high",
-            "rationale": f"Outside the {window}-day return window for {category} "
-            f"(item returned {days} days after purchase). Hard policy rule, not a judgment call.",
+            "rationale": f"Poza oknem zwrotu wynoszącym {window} dni dla kategorii {category} "
+            f"(produkt zwrócony {days} dni po zakupie). Twarda reguła polityki, nie ocena.",
             "source": "policy_rule",
             "similar_cases": [],
         }
@@ -60,8 +60,8 @@ def apply_hard_rules(new_case: dict) -> dict | None:
         return {
             "decision": "deny",
             "confidence": "medium",
-            "rationale": "No proof of purchase and a history of 3+ prior returns. "
-            "Hard policy rule for potential abuse pattern.",
+            "rationale": "Brak dowodu zakupu i historia 3+ poprzednich zwrotów. "
+            "Twarda reguła polityki dla potencjalnego wzorca nadużyć.",
             "source": "policy_rule",
             "similar_cases": [],
         }
