@@ -5,3 +5,4 @@ __pycache__/
 data/feedback_log.csv
 .agents/
 .claude/
+.streamlit/secrets.toml
