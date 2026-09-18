@@ -124,6 +124,8 @@ You must respond with ONLY a JSON object, no other text, no markdown fences, wit
 
 Be conservative: if the similar cases disagree with each other, say so in the rationale and lower your confidence.
 This recommendation will always be reviewed by a human before being finalized -- your job is to make that review fast and well-informed, not to make the final call yourself.
+
+Write the rationale field in Polish.
 """
 
 

@@ -30,6 +30,36 @@ SOURCE_LABELS = {
     "llm": "Ocena AI",
 }
 
+COLUMN_LABELS = {
+    "return_id": "ID zwrotu",
+    "sku": "SKU",
+    "category": "Kategoria",
+    "reason_code": "Powód zwrotu",
+    "days_since_purchase": "Dni od zakupu",
+    "item_condition": "Stan produktu",
+    "order_value": "Wartość (zł)",
+    "customer_return_count": "Poprzednie zwroty",
+    "proof_of_purchase": "Dowód zakupu",
+    "decision": "Decyzja",
+    "similarity": "Podobieństwo",
+    "ai_recommended_decision": "Decyzja AI",
+    "ai_confidence": "Pewność AI",
+    "ai_source": "Źródło",
+    "human_decision": "Decyzja człowieka",
+    "overridden": "Zmieniona",
+}
+
+
+def _polish_df(df: pd.DataFrame) -> pd.DataFrame:
+    renamed = df.rename(columns={k: v for k, v in COLUMN_LABELS.items() if k in df.columns})
+    if "Decyzja" in renamed.columns:
+        renamed["Decyzja"] = renamed["Decyzja"].map(lambda d: DECISION_LABELS.get(d, d))
+    if "Decyzja AI" in renamed.columns:
+        renamed["Decyzja AI"] = renamed["Decyzja AI"].map(lambda d: DECISION_LABELS.get(d, d))
+    if "Dowód zakupu" in renamed.columns:
+        renamed["Dowód zakupu"] = renamed["Dowód zakupu"].map(lambda x: "Tak" if x == "yes" else ("Nie" if x == "no" else x))
+    return renamed
+
 st.markdown("""
 <style>
 div[data-testid="stButton"] button[kind="primary"] {
@@ -260,10 +290,7 @@ if "rec" in st.session_state:
         st.error(rec["rationale"])
 
     with st.expander(f"Podobne przypadki historyczne ({len(similar_df)})"):
-        display_df = similar_df.copy()
-        if "decision" in display_df.columns:
-            display_df["decision"] = display_df["decision"].map(lambda d: DECISION_LABELS.get(d, d))
-        st.dataframe(display_df, use_container_width=True, hide_index=True)
+        st.dataframe(_polish_df(similar_df), use_container_width=True, hide_index=True)
 
     # ── Section 3: Confirm ────────────────────────────────────────────────────
 
@@ -314,7 +341,7 @@ if "rec" in st.session_state:
 
 st.divider()
 with st.expander("Dane historyczne"):
-    st.dataframe(df, use_container_width=True, hide_index=True)
+    st.dataframe(_polish_df(df), use_container_width=True, hide_index=True)
 
 if using_upload:
     rows = st.session_state.get("feedback_rows", [])
@@ -323,7 +350,7 @@ if using_upload:
             fb = pd.DataFrame(rows)
             agreement = (~fb["overridden"]).mean()
             st.metric("Zgodność AI / człowiek", f"{agreement:.0%}")
-            st.dataframe(fb, use_container_width=True, hide_index=True)
+            st.dataframe(_polish_df(fb), use_container_width=True, hide_index=True)
             st.download_button(
                 "Pobierz log decyzji",
                 fb.to_csv(index=False).encode(),
@@ -335,4 +362,4 @@ elif os.path.exists(FEEDBACK_PATH):
         fb = pd.read_csv(FEEDBACK_PATH)
         agreement = (~fb["overridden"]).mean() if len(fb) else 0
         st.metric("Zgodność AI / człowiek", f"{agreement:.0%}")
-        st.dataframe(fb, use_container_width=True, hide_index=True)
+        st.dataframe(_polish_df(fb), use_container_width=True, hide_index=True)
