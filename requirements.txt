@@ -2,3 +2,4 @@ streamlit
 pandas
 scikit-learn
 anthropic
+supabase>=2.3.0

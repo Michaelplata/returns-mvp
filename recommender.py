@@ -87,9 +87,15 @@ class ReturnIndex:
     matrix: object = field(default=None)
 
     @classmethod
-    def from_csv(cls, path: str) -> "ReturnIndex":
+    def from_csv(cls, path) -> "ReturnIndex":
         df = pd.read_csv(path)
         idx = cls(df=df)
+        idx._build()
+        return idx
+
+    @classmethod
+    def from_df(cls, df: pd.DataFrame) -> "ReturnIndex":
+        idx = cls(df=df.reset_index(drop=True))
         idx._build()
         return idx
 
@@ -129,13 +135,17 @@ Write the rationale field in Polish.
 """
 
 
+_LLM_MODEL = "claude-haiku-4-5-20251001"
+_LLM_MAX_RETRIES = 2
+
+
 def get_llm_recommendation(new_case: dict, similar_df: pd.DataFrame) -> dict:
     try:
         import anthropic
     except ImportError as e:
         raise RuntimeError("pip install anthropic") from e
 
-    client = anthropic.Anthropic()  # reads ANTHROPIC_API_KEY from env
+    client = anthropic.Anthropic()
 
     similar_cases_payload = similar_df.drop(columns=["similarity"]).to_dict(orient="records")
 
@@ -147,18 +157,28 @@ Most similar historical cases (with their final decisions):
 
 Recommend a decision as the JSON object described in your instructions."""
 
-    response = client.messages.create(
-        model="claude-sonnet-4-6",
-        max_tokens=500,
-        system=RECOMMEND_SYSTEM_PROMPT,
-        messages=[{"role": "user", "content": user_prompt}],
-    )
+    last_exc: Exception | None = None
+    for _ in range(_LLM_MAX_RETRIES):
+        response = client.messages.create(
+            model=_LLM_MODEL,
+            max_tokens=500,
+            system=[{
+                "type": "text",
+                "text": RECOMMEND_SYSTEM_PROMPT,
+                "cache_control": {"type": "ephemeral"},
+            }],
+            messages=[{"role": "user", "content": user_prompt}],
+        )
+        text = "".join(block.text for block in response.content if block.type == "text")
+        text = text.strip().removeprefix("```json").removeprefix("```").removesuffix("```").strip()
+        try:
+            parsed = json.loads(text)
+            parsed["source"] = "llm"
+            return parsed
+        except json.JSONDecodeError as e:
+            last_exc = e
 
-    text = "".join(block.text for block in response.content if block.type == "text")
-    text = text.strip().removeprefix("```json").removeprefix("```").removesuffix("```").strip()
-    parsed = json.loads(text)
-    parsed["source"] = "llm"
-    return parsed
+    raise RuntimeError(f"Model returned invalid JSON after {_LLM_MAX_RETRIES} attempts: {last_exc}")
 
 
 def recommend(new_case: dict, index: ReturnIndex, k: int = 5) -> tuple[dict, pd.DataFrame]:
